@@ -1,29 +1,41 @@
-mod config;
+//! 程序入口：配置 → 存储加载 → 写者 → HTTP 服务。
 
-use axum::{Router, routing::get};
-use config::Config;
+use juan_niang_rag_service::api::{AppState, router};
+use juan_niang_rag_service::config::Config;
+use juan_niang_rag_service::embedding::Embedder;
+use juan_niang_rag_service::store::TagStore;
+use juan_niang_rag_service::writer::Writer;
 use std::net::SocketAddr;
+use std::sync::Arc;
 use tracing::info;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // 初始化日志：把 tracing 事件输出到终端
     tracing_subscriber::fmt().init();
 
     let config = Config::from_env();
-    info!(model = %config.model_path, data_dir = %config.data_dir, "配置加载完成");
+    std::fs::create_dir_all(&config.data_dir)?;
+    info!(?config, "配置加载完成");
 
-    // 路由表：目前只有健康检查，后续阶段在这里挂 /tags 相关接口
-    let app = Router::new().route("/health", get(health));
+    // 嵌入线程（后台加载模型 + 预热，不阻塞启动）
+    let embedder = Embedder::new(&config.model_path, config.n_threads, config.n_ctx);
 
+    // 存储：加载双快照，缺失/损坏自愈重建
+    let store = TagStore::load(&config).map_err(|e| anyhow::anyhow!("存储加载失败: {e}"))?;
+    info!(
+        "存储就绪: {} tag, {} 块",
+        store.tag_count(),
+        store.chunk_count()
+    );
+
+    // 写者任务（独占 store，发布快照）
+    let writer = Arc::new(Writer::start(store, embedder.clone(), config.clone()));
+    let state = Arc::new(AppState::new(writer, embedder, config.lru_capacity));
+
+    let app = router(state);
     let addr: SocketAddr = format!("{}:{}", config.host, config.port).parse()?;
     let listener = tokio::net::TcpListener::bind(addr).await?;
     info!("RAG-Service 启动于 http://{addr}");
     axum::serve(listener, app).await?;
     Ok(())
-}
-
-/// GET /health：存活检查
-async fn health() -> &'static str {
-    "ok"
 }
