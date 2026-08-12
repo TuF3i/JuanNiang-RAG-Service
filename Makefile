@@ -8,6 +8,7 @@ CARGO      ?= cargo
 MODEL      ?= models/bge-small-zh-v1.5-q8_0.gguf
 OPENAPI    ?= api/openapi.yaml
 DEV_YAML   ?= dev.yaml
+MODEL_ID   ?= gubanjie/bge-small-zh-v1.5-q8_0.gguf
 
 # dev.yaml → 环境变量前缀（KEY=VALUE ...），供 make dev 注入。
 # 文件缺失或解析失败时为空，回退代码内默认配置。
@@ -55,6 +56,9 @@ test-e2e: ## 端到端 + 批量一致性测试（需要模型文件）
 ## 基准
 bench: ## 基准三件套（需要模型文件，无模型时自动跳过嵌入部分）
 	$(CARGO) run --release --example bench $(MODEL)
+
+download: ## 下载 bge 模型到 models/（默认魔搭 gubanjie/bge-small-zh-v1.5-q8_0.gguf，~25MB）
+	python3 scripts/download_model.py --model-id $(MODEL_ID) --output models
 
 ## API 规范
 api-lint: ## 校验 OpenAPI 规范（redocly）
