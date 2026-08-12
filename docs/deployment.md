@@ -54,22 +54,27 @@ sudo systemctl daemon-reload && sudo systemctl enable --now rag-service
 
 ## 3. Docker 部署
 
-镜像不含模型与数据，运行时挂载：
+镜像内**已包含模型**（构建时从 `models/` 拷入，需先准备模型文件）；数据目录挂载卷持久化：
 
 ```sh
-# 构建（依赖层已缓存，首次 5–20 分钟）
+# 0. 准备模型（二选一）：
+#    a. 已有模型文件：放进项目根 models/
+#    b. 从魔搭社区下载：python3 scripts/download_model.py --model-id <模型ID>
+
+# 1. 构建
+make build-release || true   # 本地可先验证编译
+# 或直接：
 docker build -t rag-service .
 
-# 运行
+# 2. 运行（镜像内置模型；也可挂载卷覆盖 /app/models）
 docker run -d --name rag-service --restart unless-stopped \
   -p 3000:3000 \
-  -v /opt/rag/models:/app/models:ro \
   -v rag-data:/app/data \
   rag-service
 
-# 验证
+# 3. 验证
 curl localhost:3000/health
-docker logs -f rag-service
+curl localhost:3000/info   # model.ready 应为 true
 ```
 
 - 镜像内默认 `RAG_HOST=0.0.0.0`（容器内必须监听所有接口）

@@ -1,5 +1,8 @@
 # 构建上下文排除项
 target
 data
-models
 .git
+
+# 注意：models/ 需要进构建上下文（Dockerfile 会把模型拷进镜像），
+# 如果 models/ 下有大体积非 gguf 文件，可改为排除指定文件，例如：
+# models/*.onnx

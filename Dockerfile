@@ -29,7 +29,9 @@ RUN cargo build --release
 
 # ========== 运行阶段 ==========
 # 说明：
-# - 镜像不包含模型文件（~25MB，来源各异），运行时挂载到 /app/models
+# - 模型随镜像分发：构建时从上下文 models/ 拷入（需先准备模型，
+#   可用 scripts/download_model.py 从魔搭社区下载）；
+#   运行时仍可挂载卷覆盖 /app/models
 # - 数据目录 /app/data 建议挂载卷持久化
 FROM debian:bookworm-slim AS runtime
 
@@ -44,6 +46,9 @@ RUN useradd --create-home --shell /usr/sbin/nologin rag
 
 WORKDIR /app
 COPY --from=builder /build/target/release/JuanNiang-RAG-Service /usr/local/bin/rag-service
+
+# 模型随镜像分发：从构建上下文 models/ 拷入（约 25MB）
+COPY models/ /app/models/
 
 RUN mkdir -p /app/data && chown -R rag:rag /app
 USER rag
