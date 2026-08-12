@@ -9,7 +9,7 @@ MODEL      ?= models/bge-small-zh-v1.5-q8_0.gguf
 OPENAPI    ?= api/openapi.yaml
 
 .PHONY: help build build-release run check fmt fmt-check clippy \
-        test test-unit test-e2e bench api-lint api-preview commit-stages clean
+        test test-unit test-e2e bench api-lint api-preview clean
 
 ## 构建与运行
 build: ## debug 构建
