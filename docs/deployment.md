@@ -59,10 +59,10 @@ sudo systemctl daemon-reload && sudo systemctl enable --now rag-service
 ```sh
 # 0. 准备模型（二选一）：
 #    a. 已有模型文件：放进项目根 models/
-#    b. 从魔搭社区下载：python3 scripts/download_model.py --model-id <模型ID>
+#    b. 从魔搭社区下载：make download
 
 # 1. 构建
-make build-release || true   # 本地可先验证编译
+# make build-release || true   # 本地可先验证编译
 # 或直接：
 docker build -t rag-service .
 
@@ -76,6 +76,18 @@ docker run -d --name rag-service --restart unless-stopped \
 curl localhost:3000/health
 curl localhost:3000/info   # model.ready 应为 true
 ```
+
+### 3.1 国内网络加速（已内置）
+
+Dockerfile 已针对国内网络做全链路加速，构建时无需额外配置：
+
+| 环节 | 加速方式 |
+|---|---|
+| 基础镜像 | 加速域名 `docker.jiaxin.site/library/`（对应 Docker Hub 官方镜像） |
+| apt 依赖 | 清华源 `mirrors.tuna.tsinghua.edu.cn`（builder 与 runtime 两个阶段） |
+| cargo 依赖 | 清华 sparse 源（`sparse+https://mirrors.tuna.tsinghua.edu.cn/crates.io-index/`） |
+
+如需切换/关闭加速（如加速站失效），修改 `Dockerfile` 中的 `FROM` 域名与源替换行即可。
 
 - 镜像内默认 `RAG_HOST=0.0.0.0`（容器内必须监听所有接口）
 - `HEALTHCHECK` 每 30s 探测 `/health`，失败自动重启（配合 `--restart`）
