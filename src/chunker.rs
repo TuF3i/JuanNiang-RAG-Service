@@ -69,16 +69,16 @@ pub fn split(text: &str, cfg: &ChunkConfig) -> Vec<String> {
     chunks
 }
 
-/// 字符数（非字节数），测试用
-fn char_len(s: &str) -> usize {
-    s.chars().count()
-}
-
 // ---------- 单元测试 ----------
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// 字符数（非字节数）
+    fn char_len(s: &str) -> usize {
+        s.chars().count()
+    }
 
     fn cfg() -> ChunkConfig {
         ChunkConfig::new(20, 5)

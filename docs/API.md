@@ -15,6 +15,7 @@
 - [GET /tags/search —— 检索](#get-tagssearch--检索)
 - [DELETE /tags/{tag} —— 删除](#delete-tagstag--删除)
 - [GET /health —— 健康检查](#get-health--健康检查)
+- [GET /info —— 服务信息](#get-info--服务信息)
 - [示例：完整流程](#示例完整流程)
 - [行为边界与注意事项](#行为边界与注意事项)
 
@@ -233,6 +234,64 @@ GET /health
 ```sh
 curl localhost:3000/health
 ```
+
+---
+
+## GET /info —— 服务信息
+
+模型状态 + 进程内存 + 向量规模，适合运维监控与集成前体检。
+
+```
+GET /info
+```
+
+**响应 200**：
+
+```json
+{
+  "status": "ok",
+  "model": {
+    "ready": true,
+    "model_name": "bge-small-zh-v1.5",
+    "dim": 512,
+    "n_params": 23691264,
+    "n_threads": 4,
+    "n_ctx": 4096,
+    "error": null
+  },
+  "memory": {
+    "rss_kb": 81244,
+    "vsize_kb": 1915772
+  },
+  "tags": 0,
+  "chunks": 0
+}
+```
+
+| 字段 | 说明 |
+|---|---|
+| `model.ready` | 模型是否加载成功、可服务。`false` 时查看 `model.error` 获取失败原因 |
+| `model.model_name` | GGUF 元数据里的模型名 |
+| `model.dim` | 嵌入维度（bge-small-zh-v1.5 = 512） |
+| `model.n_params` | 模型参数量 |
+| `model.n_threads` | 推理线程数（配置 `RAG_N_THREADS`） |
+| `model.n_ctx` | 实际上下文长度（llama.cpp 可能因多序列配置向上取整，如实上报） |
+| `model.error` | `null` 表示正常；否则为加载/初始化失败原因 |
+| `memory.rss_kb` | 进程常驻物理内存（kB）。仅 Linux（读 `/proc/self/status`），其他平台为 `null` |
+| `memory.vsize_kb` | 进程虚拟内存（kB） |
+| `tags` / `chunks` | 当前 tag 数 / 块向量数 |
+
+**curl 示例**：
+
+```sh
+curl localhost:3000/info
+```
+
+**典型用途**：
+
+- 监控：`memory.rss_kb` 随库规模线性增长，可据此设定告警阈值
+- 体检：入库前确认 `model.ready == true`，避免写入返回 500
+- 对账：`chunks` 应与 Agent 侧文档数 × 平均块数匹配
 
 ---
 

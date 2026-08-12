@@ -46,6 +46,7 @@ impl AppState {
 pub fn router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/health", get(health))
+        .route("/info", get(info))
         .route("/tags/{tag}", put(upsert).delete(delete_tag))
         .route("/tags/batch", post(batch_upsert))
         .route("/tags/search", get(search))
@@ -115,6 +116,25 @@ pub struct HealthResponse {
     pub chunks: usize,
 }
 
+#[derive(Serialize)]
+pub struct MemoryInfo {
+    /// 常驻物理内存（kB）
+    pub rss_kb: u64,
+    /// 虚拟内存（kB）
+    pub vsize_kb: u64,
+}
+
+#[derive(Serialize)]
+pub struct InfoResponse {
+    pub status: &'static str,
+    /// embedding 模型状态（由嵌入线程上报）
+    pub model: crate::embedding::EmbedderInfo,
+    /// 进程内存（仅 Linux，读 /proc/self/status）
+    pub memory: Option<MemoryInfo>,
+    pub tags: usize,
+    pub chunks: usize,
+}
+
 // ---------- 处理器 ----------
 
 async fn health(State(state): State<Arc<AppState>>) -> Json<HealthResponse> {
@@ -124,6 +144,43 @@ async fn health(State(state): State<Arc<AppState>>) -> Json<HealthResponse> {
         tags,
         chunks,
     })
+}
+
+/// GET /info：模型状态 + 进程内存 + 向量规模
+async fn info(State(state): State<Arc<AppState>>) -> Json<InfoResponse> {
+    let model = state.embedder.info().await;
+    let (tags, chunks) = state.writer.health();
+    let memory = process_memory_kb().map(|(rss_kb, vsize_kb)| MemoryInfo { rss_kb, vsize_kb });
+    Json(InfoResponse {
+        status: "ok",
+        model,
+        memory,
+        tags,
+        chunks,
+    })
+}
+
+/// 读 /proc/self/status 获取进程内存（非 Linux 返回 None）
+fn process_memory_kb() -> Option<(u64, u64)> {
+    let status = std::fs::read_to_string("/proc/self/status").ok()?;
+    let mut rss = None;
+    let mut vsize = None;
+    for line in status.lines() {
+        if let Some(v) = line.strip_prefix("VmRSS:") {
+            rss = parse_kb(v);
+        } else if let Some(v) = line.strip_prefix("VmSize:") {
+            vsize = parse_kb(v);
+        }
+    }
+    match (rss, vsize) {
+        (Some(r), Some(v)) => Some((r, v)),
+        _ => None,
+    }
+}
+
+/// 解析 "12345 kB" 形式的数值
+fn parse_kb(s: &str) -> Option<u64> {
+    s.trim().trim_end_matches(" kB").parse().ok()
 }
 
 async fn upsert(

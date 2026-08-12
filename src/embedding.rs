@@ -16,6 +16,7 @@ use llama_cpp_2::llama_batch::LlamaBatch;
 use llama_cpp_2::model::params::LlamaModelParams;
 use llama_cpp_2::model::{AddBos, LlamaModel};
 use llama_cpp_2::token::LlamaToken;
+use serde::Serialize;
 use std::num::NonZeroU32;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread;
@@ -43,6 +44,38 @@ enum Request {
         is_query: bool,
         reply: tokio::sync::oneshot::Sender<Result<(Vec<Vec<f32>>, Vec<bool>), EmbedError>>,
     },
+    /// 查询模型状态（/info 端点用）
+    Info {
+        reply: tokio::sync::oneshot::Sender<EmbedderInfo>,
+    },
+}
+
+/// 嵌入线程上报的模型状态
+#[derive(Debug, Clone, Serialize)]
+pub struct EmbedderInfo {
+    /// 模型是否加载成功、可服务
+    pub ready: bool,
+    pub model_name: Option<String>,
+    pub dim: Option<usize>,
+    pub n_params: Option<u64>,
+    pub n_threads: Option<i32>,
+    pub n_ctx: Option<u32>,
+    /// 未就绪时的失败原因
+    pub error: Option<String>,
+}
+
+impl EmbedderInfo {
+    fn unavailable(reason: String) -> Self {
+        Self {
+            ready: false,
+            model_name: None,
+            dim: None,
+            n_params: None,
+            n_threads: None,
+            n_ctx: None,
+            error: Some(reason),
+        }
+    }
 }
 
 #[derive(Debug, Error)]
@@ -85,6 +118,17 @@ impl Embedder {
             .map_err(|_| EmbedError::ChannelClosed)?;
         reply_rx.await.map_err(|_| EmbedError::ChannelClosed)?
     }
+
+    /// 查询嵌入线程状态（模型名/维度/线程数等）
+    pub async fn info(&self) -> EmbedderInfo {
+        let (reply_tx, reply_rx) = tokio::sync::oneshot::channel();
+        if self.tx.send(Request::Info { reply: reply_tx }).is_err() {
+            return EmbedderInfo::unavailable("嵌入线程未运行".into());
+        }
+        reply_rx
+            .await
+            .unwrap_or_else(|_| EmbedderInfo::unavailable("嵌入线程已退出".into()))
+    }
 }
 
 // ---------- 专属线程 ----------
@@ -93,16 +137,18 @@ fn run(model_path: &str, n_threads: i32, n_ctx: u32, rx: Receiver<Request>) {
     let backend = match LlamaBackend::init() {
         Ok(b) => b,
         Err(e) => {
-            error!("llama backend 初始化失败: {e}");
-            return;
+            let msg = format!("llama backend 初始化失败: {e}");
+            error!("{msg}");
+            return degraded_loop(rx, EmbedderInfo::unavailable(msg));
         }
     };
     let model = match LlamaModel::load_from_file(&backend, model_path, &LlamaModelParams::default())
     {
         Ok(m) => m,
         Err(e) => {
-            error!("模型加载失败（{model_path}）: {e}");
-            return;
+            let msg = format!("模型加载失败（{model_path}）: {e}");
+            error!("{msg}");
+            return degraded_loop(rx, EmbedderInfo::unavailable(msg));
         }
     };
 
@@ -116,9 +162,23 @@ fn run(model_path: &str, n_threads: i32, n_ctx: u32, rx: Receiver<Request>) {
     let mut ctx = match model.new_context(&backend, ctx_params) {
         Ok(c) => c,
         Err(e) => {
-            error!("创建 context 失败: {e}");
-            return;
+            let msg = format!("创建 context 失败: {e}");
+            error!("{msg}");
+            return degraded_loop(rx, EmbedderInfo::unavailable(msg));
         }
+    };
+
+    let info = EmbedderInfo {
+        ready: true,
+        model_name: model
+            .meta_val_str("general.name")
+            .ok()
+            .map(|s| s.trim().to_string()),
+        dim: Some(model.n_embd_out() as usize),
+        n_params: Some(model.n_params()),
+        n_threads: Some(n_threads),
+        n_ctx: Some(ctx.n_ctx()),
+        error: None,
     };
     info!(
         "Embedder 就绪: {} 参数, {} 维, {} 线程",
@@ -135,15 +195,38 @@ fn run(model_path: &str, n_threads: i32, n_ctx: u32, rx: Receiver<Request>) {
 
     // 主循环：收请求 → 处理 → 回发结果（接收端已 drop 则忽略 send 错误）
     while let Ok(req) = rx.recv() {
-        let Request::Embed {
-            texts,
-            is_query,
-            reply,
-        } = req;
-        let result = process(&model, &mut ctx, &texts, is_query);
-        let _ = reply.send(result);
+        match req {
+            Request::Embed {
+                texts,
+                is_query,
+                reply,
+            } => {
+                let result = process(&model, &mut ctx, &texts, is_query);
+                let _ = reply.send(result);
+            }
+            Request::Info { reply } => {
+                let _ = reply.send(info.clone());
+            }
+        }
     }
     info!("Embedder 线程退出");
+}
+
+/// 降级模式：模型不可用但线程仍存活，仅能回复 Info（携带失败原因），
+/// 其余请求一律回错误。
+fn degraded_loop(rx: Receiver<Request>, info: EmbedderInfo) {
+    while let Ok(req) = rx.recv() {
+        match req {
+            Request::Embed { reply, .. } => {
+                let _ = reply.send(Err(EmbedError::Inference(
+                    info.error.clone().unwrap_or_else(|| "模型不可用".into()),
+                )));
+            }
+            Request::Info { reply } => {
+                let _ = reply.send(info.clone());
+            }
+        }
+    }
 }
 
 // ---------- 处理流水线 ----------
