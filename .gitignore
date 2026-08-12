@@ -24,3 +24,5 @@ target
 # Added by cargo
 
 /target
+
+models/bge-small-zh-v1.5-q8_0.gguf
