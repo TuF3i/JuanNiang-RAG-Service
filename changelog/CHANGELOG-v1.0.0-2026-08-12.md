@@ -2,18 +2,9 @@
 
 本项目的变更日志。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
+每个版本一个文件：`CHANGELOG-<版本>-<日期>.md`。
 
-## [Unreleased]
-
-### 计划中
-
-- 多 context 池 + 查询 batch 合并（吞吐 2–3×）
-- 写入侧文本 hash 去重
-- bge-m3 升级评估（8192 上下文，免分块）
-- rerank 精排（bge-reranker）
-- 混合检索（BM25 + 向量，RRF 融合）
-
-## [0.1.0] - 2026-08-12
+## [1.0.0] - 2026-08-12
 
 首个可交付版本：tag（uuid）↔ 向量 的检索服务，供主 Agent 通过 HTTP 调用。
 原始文档与 uuid 由 Agent 保管，本服务只做向量化、检索与删除。
