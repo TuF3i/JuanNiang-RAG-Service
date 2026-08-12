@@ -55,9 +55,6 @@ api-preview: ## 交互式预览 API 文档
 	npx --yes @redocly/cli@latest preview-docs $(OPENAPI)
 
 ## 其他
-commit-stages: ## 按阶段执行 git 提交（脚本内定义各阶段文件清单）
-	bash scripts/commit-stages.sh
-
 clean: ## 清理构建产物（保留数据与模型）
 	$(CARGO) clean
 

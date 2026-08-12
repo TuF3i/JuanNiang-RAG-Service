@@ -33,7 +33,6 @@ make bench           # 基准三件套（需要模型，缺模型自动跳过嵌
 make fmt / fmt-check # 格式化 / 检查
 make clippy          # 静态检查（-D warnings，零警告目标）
 make api-lint        # redocly 校验 api/openapi.yaml
-make commit-stages   # 按阶段执行 git 提交
 ```
 
 **首次构建 5–20 分钟**（编译整个 llama.cpp 的 C++ 源码），之后增量构建秒级。
@@ -55,9 +54,9 @@ src/
 tests/e2e.rs       # 端到端（#[ignore]，需模型）
 examples/bench.rs  # 基准三件套
 api/openapi.yaml   # OpenAPI 规范（API 变更必须同步）
+```
 changelog/         # 每版本一个 CHANGELOG-<版本>-<日期>.md
 docs/              # 架构/API/开发/部署文档
-scripts/commit-stages.sh  # 分阶段提交
 ```
 
 ## 4. 配置项（环境变量）
@@ -94,7 +93,7 @@ make bench           # 嵌入延迟（含线程数扫描）/ 30 万向量检索 
 
 ## 7. 协作约定
 
-- **提交**：`make commit-stages` 按模块分阶段提交；小改动可直接 `git add` + 描述性 commit message（`feat:` / `fix:` / `docs:` / `chore:` 前缀）
+- **提交**：小改动直接 `git add` + 描述性 commit message（`feat:` / `fix:` / `docs:` / `chore:` 前缀）
 - **变更日志**：新功能/修复同步写入 `changelog/CHANGELOG-<版本>-<日期>.md`（Keep a Changelog 格式）
 - **API 变更**：必须同步 `api/openapi.yaml`（`make api-lint` 校验）与 `docs/API.md`
 - **架构变更**：同步 `docs/architecture.md`；若推翻设计稿决策，在架构文档"决策记录"表中更新
