@@ -1,0 +1,64 @@
+# syntax=docker/dockerfile:1
+
+# ========== 构建阶段 ==========
+# 说明：
+# - llama.cpp 由构建脚本编译 C++ 源码，需要 cmake + C++ 编译器 + OpenBLAS
+# - 首次构建 5-20 分钟属正常；依赖层已独立缓存，改业务代码只增量编译
+FROM rust:1-slim-bookworm AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        cmake \
+        g++ \
+        pkg-config \
+        libopenblas-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+# 先拷贝清单 + 占位源码：把最慢的依赖编译（含 llama.cpp C++）缓存成独立层
+COPY Cargo.toml Cargo.lock ./
+RUN mkdir -p src \
+    && echo 'fn main() {}' > src/main.rs \
+    && touch src/lib.rs \
+    && cargo build --release \
+    && rm -rf src
+
+# 拷贝真实源码，增量编译业务代码
+COPY src ./src
+RUN cargo build --release
+
+# ========== 运行阶段 ==========
+# 说明：
+# - 镜像不包含模型文件（~25MB，来源各异），运行时挂载到 /app/models
+# - 数据目录 /app/data 建议挂载卷持久化
+FROM debian:bookworm-slim AS runtime
+
+# llama.cpp 运行时依赖：OpenBLAS + OpenMP 库
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libopenblas0 \
+        libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# 非 root 运行
+RUN useradd --create-home --shell /usr/sbin/nologin rag
+
+WORKDIR /app
+COPY --from=builder /build/target/release/JuanNiang-RAG-Service /usr/local/bin/rag-service
+
+RUN mkdir -p /app/data && chown -R rag:rag /app
+USER rag
+
+# 服务配置（可用环境变量覆盖，见 src/config.rs）
+ENV RAG_MODEL_PATH=/app/models/bge-small-zh-v1.5-q8_0.gguf \
+    RAG_DATA_DIR=/app/data \
+    RAG_HOST=0.0.0.0 \
+    RAG_PORT=3000 \
+    RAG_N_THREADS=4
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD wget -qO- http://127.0.0.1:3000/health >/dev/null 2>&1 || exit 1
+
+VOLUME ["/app/data"]
+ENTRYPOINT ["/usr/local/bin/rag-service"]

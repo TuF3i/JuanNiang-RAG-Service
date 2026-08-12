@@ -1,0 +1,5 @@
+# 构建上下文排除项
+target
+data
+models
+.git
