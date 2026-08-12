@@ -11,9 +11,15 @@ info:
   version: 1.0.0
   contact:
     name: JuanNiang-Neo
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
 servers:
   - url: http://127.0.0.1:3000
     description: 本地默认部署
+
+# 公开服务，无认证
+security: []
 
 tags:
   - name: tags
@@ -343,9 +349,10 @@ components:
         model:
           $ref: '#/components/schemas/EmbedderInfo'
         memory:
+          type: object
+          nullable: true
           allOf:
             - $ref: '#/components/schemas/MemoryInfo'
-          nullable: true
           description: 非 Linux 平台为 null
         tags:
           type: integer
