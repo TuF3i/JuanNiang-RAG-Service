@@ -50,9 +50,10 @@
 
 ### Docs
 
-- `docs/技术文档.md`：架构、存储、并发模型、性能预算、推理加速路线
+- `docs/architecture.md`：项目架构（组件、核心机制、决策记录）
 - `docs/API.md`：正式 API 文档（含 `/info`）
-- `docs/PR.md`：完整交付回顾
+- `docs/development.md`：开发说明
+- `docs/deployment.md`：部署说明
 - `README.md`：构建、运行、API 示例、数据文件说明
 
 ### 已知限制

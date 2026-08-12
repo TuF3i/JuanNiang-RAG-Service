@@ -86,4 +86,14 @@ src/
 tests/e2e.rs       # 端到端（需模型）
 ```
 
-详细设计见 [docs/技术文档.md](docs/技术文档.md)。
+详细设计见 [docs/architecture.md](docs/architecture.md)。
+
+## 文档导航
+
+| 文档 | 内容 |
+|---|---|
+| [docs/architecture.md](docs/architecture.md) | 项目架构：组件、核心机制、数据模型、决策记录、已知限制 |
+| [docs/API.md](docs/API.md) | HTTP API 规范（对应 [api/openapi.yaml](api/openapi.yaml)） |
+| [docs/development.md](docs/development.md) | 开发说明：环境、命令、代码规范、测试、协作约定 |
+| [docs/deployment.md](docs/deployment.md) | 部署说明：本地/Docker、备份恢复、运维、故障排查 |
+| [changelog/](changelog/) | 变更日志（每版本一个文件） |
