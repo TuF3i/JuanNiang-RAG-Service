@@ -5,17 +5,17 @@
 ## 1. 前置条件
 
 - Linux（内存读取依赖 `/proc`，其他平台 `/info` 的 memory 字段为 null）
-- 模型文件：`bge-small-zh-v1.5-q8_0.gguf`（Q8_0，~25MB）
+- 模型文件：`bge-small-zh-v1.5-q8_0.gguf`（Q8_0，~25MB，`make download` 自动获取）
 - 磁盘：数据目录随库增长（10 万 tag 约 400–650MB）
 
 ## 2. 本地部署
 
 ```sh
-# 1. 编译（首次 5–20 分钟，需 cmake/g++/libopenblas-dev）
-make build-release
+# 1. 获取模型（自动下载到 models/）
+make download
 
-# 2. 放置模型
-mkdir -p models && cp bge-small-zh-v1.5-q8_0.gguf models/
+# 2. 编译（首次 5–20 分钟，需 cmake/g++/libopenblas-dev）
+make build-release
 
 # 3. 启动（默认 127.0.0.1:3000）
 RAG_DATA_DIR=/var/lib/rag-service make run

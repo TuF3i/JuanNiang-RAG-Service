@@ -10,7 +10,7 @@
 | CMake | 任意现代版本 | 编译 llama.cpp（构建脚本调用） |
 | C++ 编译器（g++） | 支持 C++17 | 编译 llama.cpp |
 | OpenBLAS 开发库 | 任意 | llama.cpp 矩阵乘法加速（`libopenblas-dev`） |
-| 模型文件 | bge-small-zh-v1.5 Q8_0 GGUF（~25MB） | 运行时必需 |
+| 模型文件 | bge-small-zh-v1.5 Q8_0 GGUF（~25MB） | 运行时必需（`make download` 自动获取） |
 
 Debian/Ubuntu 一键安装系统依赖：
 
@@ -18,12 +18,23 @@ Debian/Ubuntu 一键安装系统依赖：
 sudo apt install cmake g++ libopenblas-dev
 ```
 
-模型文件放到 `models/bge-small-zh-v1.5-q8_0.gguf`（路径可用 `RAG_MODEL_PATH` 覆盖）。
+获取模型（两种方式任选）：
+
+```sh
+# 方式一（推荐）：自动下载到 models/（默认魔搭 gubanjie/bge-small-zh-v1.5-q8_0.gguf，~25MB）
+make download
+
+# 方式二：手动放置
+# 将 bge-small-zh-v1.5-q8_0.gguf 放到 models/ 下
+```
+
+模型路径可用 `RAG_MODEL_PATH` 覆盖；下载脚本支持换仓库/校验，见 `scripts/download_model.py --help`。
 
 ## 2. 常用命令
 
 ```sh
 make help            # 全部命令清单（自文档化）
+make download        # 下载 bge 模型到 models/（魔搭，~25MB）
 make build           # debug 构建
 make build-release   # release 构建
 make run             # release 模式启动（默认 127.0.0.1:3000）
@@ -53,6 +64,7 @@ src/
   api.rs           # axum 路由、错误映射、查询缓存
 tests/e2e.rs       # 端到端（#[ignore]，需模型）
 examples/bench.rs  # 基准三件套
+scripts/download_model.py  # 魔搭模型下载（make download 调用）
 api/openapi.yaml   # OpenAPI 规范（API 变更必须同步）
 ```
 changelog/         # 每版本一个 CHANGELOG-<版本>-<日期>.md
