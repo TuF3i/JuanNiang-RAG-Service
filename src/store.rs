@@ -123,8 +123,7 @@ impl TagStore {
 
     fn empty(config: &Config) -> Result<Self, StoreError> {
         Ok(Self {
-            index: VectorIndex::new(config.dim, config.bit_width)
-                .map_err(|e| StoreError::Vector(e))?,
+            index: VectorIndex::new(config.dim, config.bit_width).map_err(StoreError::Vector)?,
             tag_to_ids: HashMap::new(),
             next_id: 0,
             raw_vectors: HashMap::new(),
@@ -135,8 +134,7 @@ impl TagStore {
 
     /// 从原始向量全量重建索引
     fn rebuild_index(&mut self) -> Result<(), StoreError> {
-        let mut new_index =
-            VectorIndex::new(self.index.dim(), 4).map_err(|e| StoreError::Vector(e))?;
+        let mut new_index = VectorIndex::new(self.index.dim(), 4).map_err(StoreError::Vector)?;
         // 原始向量缺失（keep_raw=false）时无法重建，保留原索引并告警
         if self.raw_vectors.is_empty() && !self.tag_to_ids.is_empty() {
             return Err(StoreError::Io(
@@ -246,7 +244,7 @@ impl TagStore {
     pub fn snapshot(&self) -> Result<IndexSnapshot, StoreError> {
         std::fs::create_dir_all(&self.data_dir).map_err(|e| StoreError::Io(e.to_string()))?;
         let tmp = self.data_dir.join(".cow.tvim");
-        let index = self.index.copy(&tmp).map_err(|e| StoreError::Vector(e))?;
+        let index = self.index.copy(&tmp).map_err(StoreError::Vector)?;
         let _ = std::fs::remove_file(&tmp);
 
         let mut chunk_owner = HashMap::with_capacity(self.index.len());

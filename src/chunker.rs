@@ -50,13 +50,12 @@ pub fn split(text: &str, cfg: &ChunkConfig) -> Vec<String> {
     while start < total {
         let mut end = (start + cfg.max_chars).min(total);
         // 句子边界优先：切点回退到最近的边界（保证至少推进一个字符）
-        if end < total {
-            if let Some(b) = (start + 1..end)
+        if end < total
+            && let Some(b) = (start + 1..end)
                 .rev()
                 .find(|&i| SENTENCE_BOUNDARIES.contains(&chars[i]))
-            {
-                end = b + 1;
-            }
+        {
+            end = b + 1;
         }
         chunks.push(chars[start..end].iter().collect());
         // 最后一块已到文本末尾，结束

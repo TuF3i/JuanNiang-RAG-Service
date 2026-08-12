@@ -37,12 +37,15 @@ pub struct Embedder {
     tx: Sender<Request>,
 }
 
+/// 嵌入请求的应答类型：每条文本一个向量 + 截断标记
+pub type EmbedReply = Result<(Vec<Vec<f32>>, Vec<bool>), EmbedError>;
+
 /// 一次嵌入请求：`texts` 批量嵌入，`is_query` 决定是否加查询前缀
 enum Request {
     Embed {
         texts: Vec<String>,
         is_query: bool,
-        reply: tokio::sync::oneshot::Sender<Result<(Vec<Vec<f32>>, Vec<bool>), EmbedError>>,
+        reply: tokio::sync::oneshot::Sender<EmbedReply>,
     },
     /// 查询模型状态（/info 端点用）
     Info {

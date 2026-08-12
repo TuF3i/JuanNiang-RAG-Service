@@ -37,7 +37,7 @@ impl VectorIndex {
     pub fn load(path: impl AsRef<Path>) -> Result<Self, VectorError> {
         let index = turbovec::IdMapIndex::load(path.as_ref())
             .map_err(|e| VectorError::Io(e.to_string()))?;
-        let dim = index.dim() as usize;
+        let dim = index.dim();
         Ok(Self { index, dim })
     }
 
@@ -62,7 +62,7 @@ impl VectorIndex {
         if vectors.is_empty() {
             return Err(VectorError::Empty);
         }
-        if vectors.len() % self.dim != 0 {
+        if !vectors.len().is_multiple_of(self.dim) {
             return Err(VectorError::DimMismatch {
                 expected: self.dim,
                 actual: vectors.len(),

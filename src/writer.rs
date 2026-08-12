@@ -169,7 +169,7 @@ impl WriterTask {
 
     /// 单条 upsert：应用 → 持久化 → 发布
     async fn apply_upsert(&mut self, tag: Uuid, text: String) -> Result<WriteStats, ServiceError> {
-        let (chunks, vectors, truncated) = self.prepare_chunks(&[text.clone()]).await?;
+        let (chunks, vectors, truncated) = self.prepare_chunks(std::slice::from_ref(&text)).await?;
         let chunks = chunks.into_iter().next().unwrap_or_default();
         let vectors = vectors.into_iter().next().unwrap_or_default();
         let truncated = truncated.into_iter().next().unwrap_or(false);
@@ -235,10 +235,10 @@ impl WriterTask {
         }
 
         // 3. 即使有条目失败，已成功的部分也要持久化+发布
-        if !any_error || results.iter().any(|r| r.is_ok()) {
-            if let Err(e) = self.commit() {
-                warn!("批量持久化失败: {e}");
-            }
+        if (!any_error || results.iter().any(|r| r.is_ok()))
+            && let Err(e) = self.commit()
+        {
+            warn!("批量持久化失败: {e}");
         }
         info!(n = items.len(), "批量 upsert 完成");
         results
