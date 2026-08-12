@@ -5,12 +5,14 @@ use juan_niang_rag_service::config::Config;
 use juan_niang_rag_service::embedding::Embedder;
 use juan_niang_rag_service::store::TagStore;
 use juan_niang_rag_service::writer::Writer;
+use std::io::IsTerminal;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tracing::info;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    print_banner();
     tracing_subscriber::fmt().init();
 
     let config = Config::from_env();
@@ -38,4 +40,15 @@ async fn main() -> anyhow::Result<()> {
     info!("RAG-Service 启动于 http://{addr}");
     axum::serve(listener, app).await?;
     Ok(())
+}
+
+/// 启动 banner：亮淡蓝色（ANSI 94）。
+/// stdout 不是终端（重定向 / Docker 日志）时输出纯文本，避免转义码污染日志。
+fn print_banner() {
+    let banner = include_str!("../banner.txt");
+    if std::io::stdout().is_terminal() {
+        println!("\x1b[94m{banner}\x1b[0m");
+    } else {
+        println!("{banner}");
+    }
 }
