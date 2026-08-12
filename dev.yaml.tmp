@@ -1,0 +1,32 @@
+# dev 模式配置模板
+#
+# 用法：
+#   1. 复制为 dev.yaml：cp dev.yaml.tmp dev.yaml（dev.yaml 已被 gitignore，不入库）
+#   2. 修改下面的值
+#   3. make dev 启动（debug 构建，从本文件读取环境变量）
+#
+# 未设置的项使用代码内默认值（完整说明见 docs/development.md §4 配置表）。
+# 注意：值不要包含空格。
+
+RAG_MODEL_PATH: models/bge-small-zh-v1.5-q8_0.gguf
+RAG_DATA_DIR: data
+RAG_HOST: 127.0.0.1
+RAG_PORT: 3000
+
+# 推理
+RAG_N_THREADS: 4
+RAG_N_CTX: 512
+
+# 向量
+RAG_DIM: 512
+RAG_BIT_WIDTH: 4
+
+# 分块（≈256 token/块、50 重叠）
+RAG_MAX_CHUNK_CHARS: 260
+RAG_OVERLAP_CHARS: 50
+
+# 存储：存原始向量（自愈能力，内存 +2KB/块）
+RAG_STORE_RAW_VECTORS: true
+
+# 查询 embedding 缓存条数
+RAG_LRU_CAPACITY: 1024

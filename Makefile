@@ -7,6 +7,11 @@
 CARGO      ?= cargo
 MODEL      ?= models/bge-small-zh-v1.5-q8_0.gguf
 OPENAPI    ?= api/openapi.yaml
+DEV_YAML   ?= dev.yaml
+
+# dev.yaml → 环境变量前缀（KEY=VALUE ...），供 make dev 注入。
+# 文件缺失或解析失败时为空，回退代码内默认配置。
+DEV_ENV := $(shell python3 -c 'import yaml; d = yaml.safe_load(open("$(DEV_YAML)")) or {}; print(" ".join(f"{k}={v}" for k, v in d.items()))' 2>/dev/null)
 
 .PHONY: help build build-release run check fmt fmt-check clippy \
         test test-unit test-e2e bench api-lint api-preview clean
@@ -20,6 +25,10 @@ build-release: ## release 构建（首次编译 llama.cpp 需 5-20 分钟）
 
 run: ## 以 release 模式启动服务（默认 127.0.0.1:3000）
 	$(CARGO) run --release
+
+dev: ## dev 模式：从 dev.yaml 读取环境变量启动（debug 构建，便于调试）
+	@test -f $(DEV_YAML) || (echo "未找到 $(DEV_YAML)，已从模板创建，请修改后重试" && cp dev.yaml.tmp $(DEV_YAML))
+	$(DEV_ENV) $(CARGO) run
 
 check: ## 快速类型检查
 	$(CARGO) check
