@@ -7,7 +7,12 @@
 # - 基础镜像使用国内加速域名（docker.jiaxin.site/library/ 对应 Docker Hub 官方镜像）
 FROM docker.jiaxin.site/library/rust:1-slim-bookworm AS builder
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# 国内镜像加速：apt 换清华源，cargo 换清华 sparse 源
+RUN sed -i 's|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g' \
+        /etc/apt/sources.list /etc/apt/sources.list.d/debian.sources 2>/dev/null || true \
+    && mkdir -p "$CARGO_HOME" \
+    && printf '[source.crates-io]\nreplace-with = "tuna"\n\n[source.tuna]\nregistry = "sparse+https://mirrors.tuna.tsinghua.edu.cn/crates.io-index/"\n' > "$CARGO_HOME/config.toml" \
+    && apt-get update && apt-get install -y --no-install-recommends \
         cmake \
         g++ \
         pkg-config \
@@ -37,8 +42,10 @@ RUN cargo build --release
 # - 基础镜像使用国内加速域名
 FROM docker.jiaxin.site/library/debian:bookworm-slim AS runtime
 
-# llama.cpp 运行时依赖：OpenBLAS + OpenMP 库
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# 国内镜像加速：apt 换清华源
+RUN sed -i 's|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g' \
+        /etc/apt/sources.list /etc/apt/sources.list.d/debian.sources 2>/dev/null || true \
+    && apt-get update && apt-get install -y --no-install-recommends \
         libopenblas0 \
         libgomp1 \
     && rm -rf /var/lib/apt/lists/*
