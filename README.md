@@ -1,5 +1,7 @@
 # JuanNiang-RAG-Service
 
+![banner](./docs/imgs/banner.png)
+
 JuanNiang-Neo 的 RAG 检索服务：**tag（uuid）↔ 向量** 的存储与检索，供主 Agent 调用。
 
 - 原始文档与 uuid 由 Agent 保管，本服务只做向量化与检索
