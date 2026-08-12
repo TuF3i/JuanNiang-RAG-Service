@@ -4,7 +4,8 @@
 # 说明：
 # - llama.cpp 由构建脚本编译 C++ 源码，需要 cmake + C++ 编译器 + OpenBLAS
 # - 首次构建 5-20 分钟属正常；依赖层已独立缓存，改业务代码只增量编译
-FROM rust:1-slim-bookworm AS builder
+# - 基础镜像使用国内加速域名（docker.jiaxin.site/library/ 对应 Docker Hub 官方镜像）
+FROM docker.jiaxin.site/library/rust:1-slim-bookworm AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         cmake \
@@ -33,7 +34,8 @@ RUN cargo build --release
 #   可用 scripts/download_model.py 从魔搭社区下载）；
 #   运行时仍可挂载卷覆盖 /app/models
 # - 数据目录 /app/data 建议挂载卷持久化
-FROM debian:bookworm-slim AS runtime
+# - 基础镜像使用国内加速域名
+FROM docker.jiaxin.site/library/debian:bookworm-slim AS runtime
 
 # llama.cpp 运行时依赖：OpenBLAS + OpenMP 库
 RUN apt-get update && apt-get install -y --no-install-recommends \
