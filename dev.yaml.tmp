@@ -1,0 +1,63 @@
+# dev 模式配置模板
+#
+# 用法：
+#   1. 复制为 dev.yaml：cp dev.yaml.tmp dev.yaml（dev.yaml 已被 gitignore，不入库）
+#   2. 修改下面的值
+#   3. make dev 启动（debug 构建，从本文件读取环境变量）
+#
+# 未设置的项使用代码内默认值（完整说明见 docs/development.md §4 配置表）。
+# 注意：值不要包含空格。
+
+# ---- 模型 ----
+
+# bge-small-zh-v1.5 Q8_0 GGUF 模型文件路径（~25MB）
+RAG_MODEL_PATH: models/bge-small-zh-v1.5-q8_0.gguf
+
+# ---- 存储 ----
+
+# 数据目录：存放 index.tvim（压缩向量）与 tags.bin（映射+原始向量），备份时整体复制
+RAG_DATA_DIR: data
+
+# ---- HTTP 服务 ----
+
+# 监听地址。生产环境如需外部访问，Docker 内应设为 0.0.0.0；
+# 本地调试保持 127.0.0.1 即可（无认证，勿直接暴露公网）
+RAG_HOST: 127.0.0.1
+
+# 监听端口
+RAG_PORT: 3000
+
+# ---- 推理 ----
+
+# llama.cpp 推理线程数（阶段 0 实测：8 核 CPU 上 4 最优，线程更多反而抢内存带宽）
+RAG_N_THREADS: 4
+
+# 上下文长度（bge-small-zh-v1.5 上限 512，超长文本由服务端分块处理）
+RAG_N_CTX: 512
+
+# ---- 向量索引 ----
+
+# 嵌入维度（bge-small-zh-v1.5 固定 512，需为 8 的倍数，改模型才需要动）
+RAG_DIM: 512
+
+# turbovec 量化位宽（可选 2/3/4，4 精度最高：512 维 ≈ 256B/向量）
+RAG_BIT_WIDTH: 4
+
+# ---- 服务端分块 ----
+
+# 单块最大字符数（中文 1 字 ≈ 1 token，260 ≈ 256 token；长文自动切块）
+RAG_MAX_CHUNK_CHARS: 260
+
+# 相邻块重叠字符数（≈ 50 token，避免切点切断语义）
+RAG_OVERLAP_CHARS: 50
+
+# ---- 存储行为 ----
+
+# 是否在 tags.bin 持久化原始归一化向量（true=index.tvim 损坏时可自愈重建；
+# false=省内存 ~2KB/块，损坏后需 Agent 重推全文）
+RAG_STORE_RAW_VECTORS: true
+
+# ---- 查询优化 ----
+
+# 查询 embedding LRU 缓存条数（相同 q 重复查询免推理，命中率不足时调大）
+RAG_LRU_CAPACITY: 1024

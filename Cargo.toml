@@ -1,0 +1,28 @@
+[package]
+name = "JuanNiang-RAG-Service"
+version = "1.0.0"
+edition = "2024"
+
+[lib]
+name = "juan_niang_rag_service"
+
+[dependencies]
+turbovec = "0.9"          # 向量索引（IdMapIndex）
+llama-cpp-2 = "0.1"       # llama.cpp 绑定，进程内推理
+axum = { version = "0.8", features = ["macros"] } # HTTP 框架
+tokio = { version = "1", features = ["full"] }
+anyhow = "1"              # 简易错误处理
+tracing = "0.1"           # 日志
+tracing-subscriber = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+bincode = "1"             # tags.bin 快照序列化
+uuid = { version = "1", features = ["v4", "serde"] }
+thiserror = "2"           # 错误类型 derive
+lru = "0.12"              # 查询 embedding 缓存
+
+[dev-dependencies]
+rand = "0.8"              # 基准/测试合成数据
+
+[profile.release]
+lto = true
