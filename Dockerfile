@@ -68,17 +68,14 @@ RUN sed -i 's|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g' \
         wget \
     && rm -rf /var/lib/apt/lists/*
 
-# 非 root 运行
-RUN useradd --create-home --shell /usr/sbin/nologin rag
-
 WORKDIR /app
 COPY --from=builder /build/target/release/JuanNiang-RAG-Service /usr/local/bin/rag-service
 
 # 模型随镜像分发：从构建上下文 models/ 拷入（约 25MB）
 COPY models/ /app/models/
 
-RUN mkdir -p /app/data && chown -R rag:rag /app
-USER rag
+RUN mkdir -p /app/data
+USER root
 
 # 服务配置（可用环境变量覆盖，见 src/config.rs）
 ENV RAG_MODEL_PATH=/app/models/bge-small-zh-v1.5-q8_0.gguf \
