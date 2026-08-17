@@ -2,7 +2,8 @@
 
 # ========== 构建阶段 ==========
 # 说明：
-# - llama.cpp 由构建脚本编译 C++ 源码，需要 cmake + C++ 编译器 + OpenBLAS
+# - llama.cpp 由构建脚本编译 C++ 源码，需要 cmake + make + C++ 编译器 + OpenBLAS；
+#   bindgen 生成 FFI 绑定还需 libclang（见下方 LIBCLANG_PATH）
 # - 首次构建 5-20 分钟属正常；依赖层已独立缓存，改业务代码只增量编译
 # - 基础镜像使用国内加速域名（docker.jiaxin.site/library/ 对应 Docker Hub 官方镜像）
 FROM docker.jiaxin.site/library/rust:1-slim-bookworm AS builder
@@ -14,10 +15,15 @@ RUN sed -i 's|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g' \
     && printf '[source.crates-io]\nreplace-with = "tuna"\n\n[source.tuna]\nregistry = "sparse+https://mirrors.tuna.tsinghua.edu.cn/crates.io-index/"\n' > "$CARGO_HOME/config.toml" \
     && apt-get update && apt-get install -y --no-install-recommends \
         cmake \
+        make \
         g++ \
         pkg-config \
         libopenblas-dev \
+        libclang-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# llama-cpp-sys-2 构建时用 bindgen 生成 FFI 绑定，必须能找到 libclang（bookworm 自带 LLVM 14）
+ENV LIBCLANG_PATH=/usr/lib/llvm-14/lib
 
 WORKDIR /build
 
@@ -48,6 +54,7 @@ RUN sed -i 's|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g' \
     && apt-get update && apt-get install -y --no-install-recommends \
         libopenblas0 \
         libgomp1 \
+        wget \
     && rm -rf /var/lib/apt/lists/*
 
 # 非 root 运行
