@@ -27,17 +27,28 @@ ENV LIBCLANG_PATH=/usr/lib/llvm-14/lib
 
 WORKDIR /build
 
-# 先拷贝清单 + 占位源码：把最慢的依赖编译（含 llama.cpp C++）缓存成独立层
+# 先拷贝清单 + 占位 lib：只编译依赖（含 llama.cpp C++）缓存成独立层。
+# 注意必须用 --lib：若用 fn main(){} 占位去编可执行文件，会产出"空壳二进制"，
+# 一旦被误拷进镜像，容器启动即 exit 0（零日志、无限重启）。
 COPY Cargo.toml Cargo.lock ./
 RUN mkdir -p src \
-    && echo 'fn main() {}' > src/main.rs \
-    && touch src/lib.rs \
-    && cargo build --release \
+    && echo 'pub fn _placeholder() {}' > src/lib.rs \
+    && cargo build --release --lib \
     && rm -rf src
 
-# 拷贝真实源码，增量编译业务代码
+# banner.txt 由 src/main.rs 的 include_str!("../banner.txt") 编译期内嵌，必须拷入
+COPY banner.txt ./
+
+# 拷贝真实源码。关键：必须 touch 源文件——Docker COPY 保留宿主机旧 mtime，
+# cargo 的 mtime 指纹会误判"源码未变化"而复用占位产物（空壳进镜像，启动即 exit 0）
 COPY src ./src
-RUN cargo build --release
+RUN find src -type f -exec touch {} + \
+    && cargo build --release
+
+# 防呆：校验最终二进制含服务日志字符串，杜绝空壳/旧产物被拷进运行镜像
+RUN LC_ALL=C grep -a -q "RAG-Service 启动于" target/release/JuanNiang-RAG-Service \
+    && echo "OK: 真实二进制确认" \
+    || (echo "FATAL: 检测到空壳二进制(缺少 'RAG-Service 启动于')，构建中止" && exit 1)
 
 # ========== 运行阶段 ==========
 # 说明：
