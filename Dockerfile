@@ -25,6 +25,13 @@ RUN sed -i 's|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g' \
 # llama-cpp-sys-2 构建时用 bindgen 生成 FFI 绑定，必须能找到 libclang（bookworm 自带 LLVM 14）
 ENV LIBCLANG_PATH=/usr/lib/llvm-14/lib
 
+# 固定可移植 CPU 基线（x86-64-v2 = SSE2~SSE4.2/POPCNT，不含 AVX2/FMA/AVX512）。
+# 原因：llama-cpp-sys-2 会按 RUSTFLAGS 的 target-cpu 决定 llama.cpp 的编译目标，
+# 若不固定，镜像在 CPU 较新的机器（如开发机）上构建出的二进制可能带 AVX2 指令，
+# 部署到旧 CPU（如 Xeon E5-2470 Sandy Bridge，仅 AVX）时立即 SIGILL（exit 132）。
+# x86-64-v2 已被 2009 年后的所有主流 x86-64 CPU 支持，嵌入向量速度影响可忽略。
+ENV RUSTFLAGS="-C target-cpu=x86-64-v2"
+
 WORKDIR /build
 
 # 先拷贝清单 + 占位 lib：只编译依赖（含 llama.cpp C++）缓存成独立层。
