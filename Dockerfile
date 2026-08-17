@@ -25,12 +25,27 @@ RUN sed -i 's|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g' \
 # llama-cpp-sys-2 构建时用 bindgen 生成 FFI 绑定，必须能找到 libclang（bookworm 自带 LLVM 14）
 ENV LIBCLANG_PATH=/usr/lib/llvm-14/lib
 
-# 固定可移植 CPU 基线（x86-64-v2 = SSE2~SSE4.2/POPCNT，不含 AVX2/FMA/AVX512）。
-# 原因：llama-cpp-sys-2 会按 RUSTFLAGS 的 target-cpu 决定 llama.cpp 的编译目标，
-# 若不固定，镜像在 CPU 较新的机器（如开发机）上构建出的二进制可能带 AVX2 指令，
-# 部署到旧 CPU（如 Xeon E5-2470 Sandy Bridge，仅 AVX）时立即 SIGILL（exit 132）。
-# x86-64-v2 已被 2009 年后的所有主流 x86-64 CPU 支持，嵌入向量速度影响可忽略。
+# 固定可移植 CPU 基线（x86-64-v2 = SSE2~SSE4.2/POPCNT，不含 AVX/AVX2/FMA/AVX512）。
+# 原因：llama-cpp-sys-2 的 build.rs 只按 RUSTFLAGS 的 target-cpu 决定 GGML_NATIVE，
+# 但 llama.cpp 的 cmake 在 GGML_NATIVE=OFF 时，GGML_AVX/GGML_AVX2/GGML_FMA/GGML_F16C/
+# GGML_BMI2 仍默认全部 ON（会追加 -mavx2 等 flag），必须显式关掉。否则镜像在较新 CPU
+# 的机器上构建出的二进制带 AVX2 指令，部署到旧 CPU（如 Xeon E5-2470 Sandy Bridge，
+# 无 AVX2/FMA/F16C）时立即 SIGILL（exit 132）。GGML_* 环境变量会被 build.rs 透传给
+# cmake 覆盖默认值。x86-64-v2 已被 2009 年后所有主流 x86-64 CPU 支持，bge 小模型
+# 嵌入性能损失可忽略。
 ENV RUSTFLAGS="-C target-cpu=x86-64-v2"
+
+# 显式关闭 llama.cpp 默认开启的 AVX/AVX2/FMA/F16C/BMI2（保持 x86-64-v2 可移植基线）
+ENV GGML_AVX=OFF \
+    GGML_AVX2=OFF \
+    GGML_BMI2=OFF \
+    GGML_FMA=OFF \
+    GGML_F16C=OFF \
+    GGML_AVX512=OFF \
+    GGML_AVX512_VBMI=OFF \
+    GGML_AVX512_VNNI=OFF \
+    GGML_AVX512_BF16=OFF \
+    GGML_AVX_VNNI=OFF
 
 WORKDIR /build
 
